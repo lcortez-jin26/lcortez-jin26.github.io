@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wake-Up Arcade</title>
+<style>
+    /* Arcade Theme CSS Variables */
+    :root {
+        --bg: #0B132B;
+        --card-bg: #1C2541;
+        --coral: #FF4D6D;
+        --mint: #00FF9D;
+        --yellow: #FFD166;
+        --purple: #9D4EDD;
+        --white: #F8F9FA;
+        --gray: #6C757D;
+        --dark: #000000;
+        --border-width: 4px;
+        --shadow-offset: 6px;
+        
+        /* Game Accents */
+        --wordle-acc: var(--mint);
+        --math-acc: var(--coral);
+        --mem-acc: var(--purple);
+        --surprise-acc: var(--yellow);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg);
+        background-image: radial-gradient(circle, rgba(255,255,255,0.05) 2px, transparent 2px);
+        background-size: 30px 30px;
+        color: var(--white);
+        margin: 0;
+        min-height: 100vh;
+        overflow-x: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    h1, h2, h3, .mono {
+        font-family: 'Courier New', Courier, monospace;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin: 0 0 10px 0;
+    }
+
+    h1 { color: var(--mint); text-shadow: 3px 3px 0px var(--purple); font-size: 2.5rem; text-align: center; }
+    h2 { color: var(--yellow); font-size: 2rem; text-align: center; text-shadow: 2px 2px 0px var(--purple);}
+    
+    .subtitle { color: var(--coral); font-weight: bold; font-size: 1.2rem; text-align: center; margin-bottom: 20px;}
+    .inline-msg { font-family: 'Courier New', monospace; font-size: 1rem; color: var(--yellow); min-height: 1.5em; margin: 10px 0; text-align: center; }
+
+    /* Layouts */
+    .screen {
+        display: none;
+        width: 100%;
+        max-width: 1000px;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.4s ease, transform 0.4s ease;
+        z-index: 10;
+        position: relative;
+    }
+    .screen.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .split-layout {
+        gap: 30px;
+        width: 100%;
+        background: var(--card-bg);
+        padding: 40px;
+        border: var(--border-width) solid var(--white);
+        border-radius: 16px;
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--purple);
+    }
+    .split-left { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; border-right: var(--border-width) dashed var(--gray); padding-right: 30px;}
+    .split-right { flex: 1.5; display: flex; flex-direction: column; padding-left: 10px;}
+    
+    .center-layout {
+        flex-direction: column;
+        align-items: center;
+        background: var(--card-bg);
+        padding: 30px;
+        border: var(--border-width) solid var(--white);
+        border-radius: 16px;
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0px var(--coral);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    @media (max-width: 800px) {
+        .split-layout { flex-direction: column; padding: 20px; gap: 20px; }
+        .split-left { border-right: none; border-bottom: var(--border-width) dashed var(--gray); padding-right: 0; padding-bottom: 20px;}
+        .split-right { padding-left: 0; }
+    }
+
+    /* Live Clocks & Countdowns */
+    .huge-clock { font-family: 'Courier New', monospace; font-size: 4rem; color: var(--white); text-shadow: 3px 3px 0px var(--coral); margin: 20px 0;}
+    .countdown-timer { font-family: 'Courier New', monospace; font-size: 2rem; color: var(--yellow); background: var(--bg); padding: 10px 20px; border-radius: 8px; border: 2px solid var(--gray); margin: 15px 0;}
+
+    /* Chunky Arcade Buttons */
+    button {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1.1rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 14px 24px;
+        cursor: pointer;
+        border-radius: 8px;
+        border: var(--border-width) solid var(--white);
+        background-color: var(--mint);
+        color: var(--dark);
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0px rgba(0,0,0,0.5);
+        transition: transform 0.1s, box-shadow 0.1s, filter 0.2s;
+        margin-top: 10px;
+        display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+    }
+    button:hover { filter: brightness(1.15); }
+    button:active {
+        transform: translate(calc(var(--shadow-offset) - 2px), calc(var(--shadow-offset) - 2px));
+        box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+    }
+    button:disabled { filter: grayscale(1); cursor: not-allowed; transform: none; box-shadow: var(--shadow-offset) var(--shadow-offset) 0px rgba(0,0,0,0.5); opacity: 0.7;}
+    button:focus-visible { outline: 3px dashed var(--yellow); outline-offset: 4px; }
+    
+    .coral-btn { background-color: var(--coral); color: var(--white); }
+    .gray-btn { background-color: var(--gray); color: var(--white); }
+    .yellow-btn { background-color: var(--yellow); color: var(--dark); }
+
+    /* Inputs */
+    input[type="time"], input[type="number"], select {
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 1.5rem;
+        padding: 12px;
+        margin: 10px 0 20px 0;
+        width: 100%;
+        border-radius: 8px;
+        border: var(--border-width) solid var(--white);
+        background: var(--bg);
+        color: var(--mint);
+        text-align: center;
+        box-shadow: inset 4px 4px 0px rgba(0,0,0,0.5);
+    }
+    input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    input:focus-visible, select:focus-visible { outline: 3px dashed var(--yellow); outline-offset: 2px; }
+
+    /* Game Selection Cards */
+    .game-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; margin-bottom: 25px; }
+    .game-card {
+        border: var(--border-width) solid var(--gray);
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        background: var(--bg);
+        transition: all 0.2s;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .game-card .symbol { font-size: 2.2rem; margin-bottom: 5px; }
+    .game-card .title { font-weight: bold; font-family: 'Courier New', monospace; font-size: 1.1rem; }
+    .game-card .desc { font-size: 0.8rem; color: var(--gray); margin-top: 5px; }
+    .game-card:hover { border-color: var(--white); transform: translateY(-4px); box-shadow: 0 4px 0px var(--gray);}
+    .game-card:focus-visible { outline: 3px dashed var(--yellow); }
+    
+    .game-card[data-mode="wordle"].selected { border-color: var(--wordle-acc); background: rgba(0,255,157,0.1); box-shadow: 0 0 15px rgba(0,255,157,0.3); }
+    .game-card[data-mode="math"].selected { border-color: var(--math-acc); background: rgba(255,77,109,0.1); box-shadow: 0 0 15px rgba(255,77,109,0.3); }
+    .game-card[data-mode="memory"].selected { border-color: var(--mem-acc); background: rgba(157,78,221,0.1); box-shadow: 0 0 15px rgba(157,78,221,0.3); }
+    .game-card[data-mode="surprise"].selected { border-color: var(--surprise-acc); background: rgba(255,209,102,0.1); box-shadow: 0 0 15px rgba(255,209,102,0.3); }
+    
+    /* Character SVG */
+    #clock-character { width: 140px; height: 140px; margin-bottom: -15px; z-index: 20; position: relative; transition: transform 0.2s; }
+    .face-part { display: none; }
+    .state-setup #face-sleepy, .state-wait #face-sleepy, .state-won-skip #face-sleepy { display: block; }
+    .state-ringing #face-ringing, .state-demo #face-ringing { display: block; }
+    .state-won #face-happy { display: block; }
+    .char-react { transform: scale(1.1) rotate(-5deg); }
+    
+    @keyframes pulse-ring {
+        0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px var(--coral)); }
+        25% { transform: scale(1.05) rotate(5deg); }
+        50% { transform: scale(1.05) rotate(-5deg); filter: drop-shadow(0 0 20px var(--coral)); }
+        75% { transform: scale(1.05) rotate(5deg); }
+        100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px var(--coral)); }
+    }
+    .state-ringing #clock-character { animation: pulse-ring 0.6s infinite; }
+
+    /* Animations */
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+    .anim-bounce { animation: bounce 0.4s ease; }
+    .anim-shake { animation: shake 0.4s ease; }
+
+    /* Progress Dots */
+    .progress-bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; }
+    .dot { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--gray); background: transparent; transition: all 0.3s; }
+    .dot.filled-math { background: var(--math-acc); border-color: var(--white); box-shadow: 0 0 8px var(--math-acc); }
+    .dot.filled-mem { background: var(--mem-acc); border-color: var(--white); box-shadow: 0 0 8px var(--mem-acc); }
+
+    /* Wordle Elements */
+    #wordle-container { display: none; width: 100%; flex-direction: column; align-items: center;}
+    #grid { display: grid; gap: 8px; margin: 15px 0; }
+    .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .tile {
+        width: 55px; height: 55px;
+        border: var(--border-width) solid var(--gray);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; font-weight: bold; text-transform: uppercase;
+        font-family: 'Courier New', Courier, monospace;
+        background: var(--bg);
+        transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .tile.flip-in { transform: rotateX(90deg); }
+    .tile.correct { background-color: var(--mint); border-color: var(--white); color: var(--dark); }
+    .tile.present { background-color: var(--yellow); border-color: var(--white); color: var(--dark); }
+    .tile.absent { background-color: var(--gray); border-color: var(--white); }
+    
+    .keyboard { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 500px; }
+    .kb-row { display: flex; justify-content: center; gap: 6px; width: 100%; }
+    .key {
+        border: 2px solid var(--gray); border-radius: 4px; padding: 14px 0; flex: 1; 
+        font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        background: var(--bg); color: var(--white); font-weight: bold; margin-top:0; box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+    }
+    .key.wide { flex: 1.5; font-size: 0.85rem; }
+    .key.correct { background-color: var(--mint); color: var(--dark); border-color: var(--mint); }
+    .key.present { background-color: var(--yellow); color: var(--dark); border-color: var(--yellow); }
+    .key.absent { opacity: 0.5; }
+
+    /* Math Elements */
+    #math-container { display: none; width: 100%; flex-direction: column; align-items: center; text-align: center; }
+    .math-problem { font-size: 3.5rem; font-family: 'Courier New', monospace; color: var(--math-acc); margin: 20px 0; text-shadow: 2px 2px 0px var(--white); }
+    
+    /* Memory Game Elements */
+    #memory-container { display: none; width: 100%; flex-direction: column; align-items: center; text-align: center;}
+    .memory-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+    .mem-btn {
+        width: 110px; height: 110px; border-radius: 12px; margin-top: 0;
+        display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        border: var(--border-width) solid var(--white);
+        box-shadow: var(--shadow-offset) var(--shadow-offset) 0px rgba(0,0,0,0.5);
+        opacity: 0.8; transition: all 0.1s; position: relative;
+    }
+    .mem-btn .sym { font-size: 3rem; }
+    .mem-btn .key-hint { position: absolute; top: 5px; left: 8px; font-size: 0.8rem; font-family: monospace; font-weight: bold; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+    .mem-btn:active:not(:disabled), .mem-btn.active-flash {
+        opacity: 1; filter: brightness(1.4);
+        transform: translate(calc(var(--shadow-offset) - 2px), calc(var(--shadow-offset) - 2px));
+        box-shadow: 2px 2px 0px rgba(0,0,0,0.5);
+    }
+    .mem-btn[data-color="coral"] { background-color: var(--coral); color: var(--white); }
+    .mem-btn[data-color="mint"] { background-color: var(--mint); color: var(--dark); }
+    .mem-btn[data-color="yellow"] { background-color: var(--yellow); color: var(--dark); }
+    .mem-btn[data-color="purple"] { background-color: var(--purple); color: var(--white); }
+
+    /* Confetti */
+    #confetti-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100; overflow: hidden; }
+    .confetti { position: absolute; width: 12px; height: 12px; top: -15px; animation: fall linear forwards; }
+    @keyframes fall { to { transform: translateY(105vh) rotate(720deg); opacity: 0; } }
+
+    /* Action Buttons */
+    .action-btns { display: flex; gap: 15px; margin-top: 30px; width: 100%; justify-content: center;}
+    .action-btns button { font-size: 1rem; padding: 12px 20px; }
+
+    @media (prefers-reduced-motion: reduce) {
+        *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+        .state-ringing #clock-character { animation: none; filter: drop-shadow(0 0 10px var(--coral)); }
+    }
+</style>
+</head>
+<body class="state-setup">
+
+<!-- Setup Screen -->
+<div id="setup-screen" class="screen split-layout active">
+    <div class="split-left">
+        <!-- SVG Character -->
+        <svg id="clock-character" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <!-- Body -->
+            <circle cx="50" cy="55" r="35" fill="var(--card-bg)" stroke="var(--white)" stroke-width="4"/>
+            <!-- Bells -->
+            <path d="M 20 30 Q 30 10 40 25" fill="none" stroke="var(--coral)" stroke-width="4" stroke-linecap="round"/>
+            <path d="M 80 30 Q 70 10 60 25" fill="none" stroke="var(--coral)" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="25" cy="20" r="6" fill="var(--coral)"/>
+            <circle cx="75" cy="20" r="6" fill="var(--coral)"/>
+            <!-- Legs -->
+            <line x1="35" y1="90" x2="25" y2="98" stroke="var(--white)" stroke-width="4" stroke-linecap="round"/>
+            <line x1="65" y1="90" x2="75" y2="98" stroke="var(--white)" stroke-width="4" stroke-linecap="round"/>
+            
+            <!-- Faces -->
+            <!-- Sleepy -->
+            <g id="face-sleepy" class="face-part">
+                <path d="M 35 50 Q 40 55 45 50" fill="none" stroke="var(--mint)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M 55 50 Q 60 55 65 50" fill="none" stroke="var(--mint)" stroke-width="3" stroke-linecap="round"/>
+                <circle cx="50" cy="65" r="4" fill="var(--mint)"/>
+                <text x="65" y="35" fill="var(--yellow)" font-family="monospace" font-size="12" font-weight="bold">Zzz</text>
+            </g>
+            <!-- Ringing/Startled -->
+            <g id="face-ringing" class="face-part">
+                <circle cx="40" cy="45" r="5" fill="var(--yellow)"/>
+                <circle cx="60" cy="45" r="5" fill="var(--yellow)"/>
+                <ellipse cx="50" cy="65" rx="6" ry="10" fill="var(--coral)"/>
+                <path d="M 30 35 L 45 40 M 70 35 L 55 40" stroke="var(--white)" stroke-width="2"/>
+            </g>
+            <!-- Happy -->
+            <g id="face-happy" class="face-part">
+                <path d="M 35 45 Q 40 40 45 45" fill="none" stroke="var(--mint)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M 55 45 Q 60 40 65 45" fill="none" stroke="var(--mint)" stroke-width="3" stroke-linecap="round"/>
+                <path d="M 40 60 Q 50 70 60 60" fill="none" stroke="var(--coral)" stroke-width="4" stroke-linecap="round"/>
+            </g>
+        </svg>
+        <div class="huge-clock" id="setup-clock">12:00</div>
+        <p class="subtitle" style="margin-bottom:0;">Wake-Up Arcade</p>
+    </div>
+    <div class="split-right">
+        <h2>Set Your Alarm</h2>
+        <input type="time" id="alarmTime" aria-label="Alarm Time" required>
+        
+        <div class="game-cards">
+            <div class="game-card selected" data-mode="wordle" onclick="selectMode('wordle')" role="button" tabindex="0">
+                <div class="symbol">🔤</div>
+                <div class="title">WORDLE</div>
+                <div class="desc">Crack the five-letter word.</div>
+            </div>
+            <div class="game-card" data-mode="math" onclick="selectMode('math')" role="button" tabindex="0">
+                <div class="symbol">🧮</div>
+                <div class="title">MATH</div>
+                <div class="desc">Solve five to silence.</div>
+            </div>
+            <div class="game-card" data-mode="memory" onclick="selectMode('memory')" role="button" tabindex="0">
+                <div class="symbol">🧩</div>
+                <div class="title">MEMORY</div>
+                <div class="desc">Watch. Remember. Repeat.</div>
+            </div>
+            <div class="game-card" data-mode="surprise" onclick="selectMode('surprise')" role="button" tabindex="0">
+                <div class="symbol">🎲</div>
+                <div class="title">SURPRISE</div>
+                <div class="desc">Let fate pick your challenge.</div>
+            </div>
+        </div>
+        
+        <div id="wordleOptions" style="width:100%; display:block;">
+            <select id="wordTheme" aria-label="Word Theme">
+                <option value="mixed" selected>Theme: Mix</option>
+                <option value="morning">Theme: Morning</option>
+                <option value="coffee">Theme: Coffee</option>
+            </select>
+        </div>
+        
+        <div style="display:flex; gap:10px;">
+            <button onclick="setAlarm()" style="flex:2;">Set Alarm</button>
+            <button onclick="startDemo()" class="yellow-btn" style="flex:1;">Try in 5s</button>
+        </div>
+        <div id="setup-msg" class="inline-msg"></div>
+    </div>
+</div>
+
+<!-- Waiting Screen (Alarm Set) -->
+<div id="waiting-screen" class="screen split-layout">
+    <div class="split-left">
+        <!-- Re-use SVG character via JS moving it or visually mirroring. For simplicity, we just keep one SVG and move it via JS, or replicate. Let's just move it via JS -->
+        <div id="char-container-wait"></div>
+        <div class="huge-clock" id="wait-clock">12:00</div>
+    </div>
+    <div class="split-right" style="align-items:center; justify-content:center;">
+        <h2>Alarm Armed!</h2>
+        <p class="subtitle" id="wait-target-text">Scheduled for --</p>
+        <div class="countdown-timer" id="wait-countdown">00:00:00</div>
+        <p class="mono" style="color:var(--gray);">Challenge: <span id="wait-challenge-name" style="color:var(--white);">--</span></p>
+        <p class="inline-msg" style="color:var(--mint); font-size: 0.9rem;">Keep this tab open for the alarm to ring.</p>
+        
+        <div class="action-btns">
+            <button class="coral-btn" onclick="cancelAlarm()">Cancel Alarm</button>
+            <button class="gray-btn" onclick="cancelAlarm()">Edit</button>
+        </div>
+    </div>
+</div>
+
+<!-- Demo Countdown Screen -->
+<div id="demo-screen" class="screen center-layout">
+    <h2>Get Ready!</h2>
+    <div class="huge-clock" id="demo-countdown" style="font-size: 5rem; color:var(--yellow);">5</div>
+    <p class="subtitle">Demo starting...</p>
+    <button class="gray-btn" onclick="cancelDemo()">Cancel</button>
+</div>
+
+<!-- Active Alarm Game Screen -->
+<div id="alarm-ui" class="screen center-layout">
+    <div id="char-container-game" style="margin-top:-60px;"></div>
+    <h2 id="alarm-title">WAKE UP!</h2>
+    <p class="subtitle" style="margin-bottom:10px;">Rise and solve!</p>
+    
+    <!-- Wordle UI -->
+    <div id="wordle-container">
+        <div id="wordle-msg" class="inline-msg">Enter five letters</div>
+        <div id="grid"></div>
+        <div class="keyboard">
+            <div class="kb-row">
+                <button class="key" data-key="Q">Q</button><button class="key" data-key="W">W</button><button class="key" data-key="E">E</button><button class="key" data-key="R">R</button><button class="key" data-key="T">T</button><button class="key" data-key="Y">Y</button><button class="key" data-key="U">U</button><button class="key" data-key="I">I</button><button class="key" data-key="O">O</button><button class="key" data-key="P">P</button>
+            </div>
+            <div class="kb-row">
+                <button class="key" data-key="A">A</button><button class="key" data-key="S">S</button><button class="key" data-key="D">D</button><button class="key" data-key="F">F</button><button class="key" data-key="G">G</button><button class="key" data-key="H">H</button><button class="key" data-key="J">J</button><button class="key" data-key="K">K</button><button class="key" data-key="L">L</button>
+            </div>
+            <div class="kb-row">
+                <button class="key wide" data-key="ENTER">ENT</button><button class="key" data-key="Z">Z</button><button class="key" data-key="X">X</button><button class="key" data-key="C">C</button><button class="key" data-key="V">V</button><button class="key" data-key="B">B</button><button class="key" data-key="N">N</button><button class="key" data-key="M">M</button><button class="key wide" data-key="BACKSPACE">⌫</button>
+            </div>
+        </div>
+        <div id="wordle-retry-box" style="display:none; margin-top:15px;">
+            <button onclick="retryWordle()" class="yellow-btn">Try Another Word</button>
+        </div>
+    </div>
+
+    <!-- Math UI -->
+    <div id="math-container">
+        <div class="progress-bar" id="math-dots">
+            <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="mono" style="color:var(--gray);">Question <span id="mathRoundDisplay">1</span> of 5</div>
+        <div class="math-problem" id="mathProblem">12 + 15 = ?</div>
+        <div id="math-msg" class="inline-msg"></div>
+        <input type="number" id="mathAnswer" placeholder="Answer" aria-label="Math Answer" autocomplete="off">
+        <button onclick="submitMathAnswer()" style="width:100%;">Submit</button>
+    </div>
+
+    <!-- Memory UI -->
+    <div id="memory-container">
+        <div class="mono" style="color:var(--gray); margin-bottom:5px;">Round <span id="memRoundDisplay">1</span> of 3</div>
+        <div class="progress-bar" id="mem-dots"></div>
+        
+        <div class="memory-grid">
+            <button class="mem-btn" data-idx="0" data-color="coral" onclick="handleMemoryClick(0)" aria-label="Square">
+                <span class="key-hint">1</span><span class="sym">⬛</span>
+            </button>
+            <button class="mem-btn" data-idx="1" data-color="mint" onclick="handleMemoryClick(1)" aria-label="Circle">
+                <span class="key-hint">2</span><span class="sym">⏺</span>
+            </button>
+            <button class="mem-btn" data-idx="2" data-color="yellow" onclick="handleMemoryClick(2)" aria-label="Triangle">
+                <span class="key-hint">3</span><span class="sym">▲</span>
+            </button>
+            <button class="mem-btn" data-idx="3" data-color="purple" onclick="handleMemoryClick(3)" aria-label="Star">
+                <span class="key-hint">4</span><span class="sym">★</span>
+            </button>
+        </div>
+        <div id="memory-status" class="inline-msg">Watch the pattern...</div>
+    </div>
+
+    <div class="action-btns">
+        <button class="gray-btn" onclick="snooze()">Snooze (1m)</button>
+        <button class="coral-btn" onclick="skipChallenge()">Skip challenge</button>
+    </div>
+</div>
+
+<!-- Stats Screen -->
+<div id="stats-screen" class="screen center-layout">
+    <div id="char-container-stats" style="margin-top:-60px;"></div>
+    <h2>ALARM OFF</h2>
+    <p id="disarmMsg" class="subtitle">Challenge Cleared!</p>
+    
+    <div style="background: var(--bg); padding: 25px; border-radius: 8px; border: var(--border-width) solid var(--white); width: 100%; margin-bottom: 20px; text-align: left;">
+        <p class="mono">TIME: <span id="timeTaken" style="color: var(--mint);">--</span>s</p>
+        <p class="mono">PENALTY: <span id="penaltyDisplay" style="color: var(--coral);">0</span>s</p>
+        <hr style="border-color: var(--gray); margin: 15px 0;">
+        <p class="mono" style="font-size:1.3rem; font-weight:bold;">TOTAL SCORE: <span id="totalTimeDisplay" style="color: var(--yellow);">--</span>s</p>
+        <p id="skip-note" class="mono" style="color:var(--gray); font-size:0.8rem; display:none; margin-top:10px;">* Skipping stops the alarm but adds 20s.</p>
+    </div>
+    
+    <button onclick="resetToSetup()" style="width: 100%;">Return to Setup</button>
+</div>
+
+<div id="confetti-container"></div>
+
+<script>
+    // --- Global Variables & Session Management ---
+    let sessionId = 0; // Incremented to kill old async tasks
+    let audioCtx = null;
+    let alarmSoundInterval = null;
+    
+    let clockInterval = null;
+    let targetDate = null;
+    let alarmCheckInterval = null;
+    let isRinging = false;
+    let isDemo = false;
+    
+    let selectedGameMode = "wordle";
+    let activeGameMode = ""; 
+    let penaltySeconds = 0;
+    let startTime;
+    
+    const svgChar = document.getElementById('clock-character');
+
+    // --- Initialization & Utilities ---
+    function init() {
+        updateClockDisplays();
+        clockInterval = setInterval(updateClockDisplays, 1000);
+        document.getElementById('char-container-setup') ? null : document.querySelector('.split-left').prepend(svgChar);
+        selectMode('wordle'); // Ensure UI matches initial state
+    }
+
+    function updateClockDisplays() {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('setup-clock').innerText = timeStr;
+        document.getElementById('wait-clock').innerText = timeStr;
+    }
+
+    function getSession() {
+        return ++sessionId;
+    }
+
+    function resetSession() {
+        sessionId++;
+        stopAlarmSound();
+        isRinging = false;
+        isDemo = false;
+        targetDate = null;
+        if(alarmCheckInterval) clearInterval(alarmCheckInterval);
+        alarmCheckInterval = null;
+        penaltySeconds = 0;
+    }
+
+    function setScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const screen = document.getElementById(screenId);
+        screen.classList.add('active');
+        
+        // Move character SVG to active screen
+        if(screenId === 'setup-screen') document.querySelector('#setup-screen .split-left').prepend(svgChar);
+        else if(screenId === 'waiting-screen') document.getElementById('char-container-wait').appendChild(svgChar);
+        else if(screenId === 'alarm-ui') document.getElementById('char-container-game').appendChild(svgChar);
+        else if(screenId === 'stats-screen') document.getElementById('char-container-stats').appendChild(svgChar);
+
+        // Update body class for character face
+        document.body.className = '';
+        if (screenId === 'setup-screen') document.body.classList.add('state-setup');
+        else if (screenId === 'waiting-screen') document.body.classList.add('state-wait');
+        else if (screenId === 'demo-screen') document.body.classList.add('state-demo');
+        else if (screenId === 'alarm-ui') document.body.classList.add('state-ringing');
+        // stats screen handled dynamically in winGame
+        
+        // Move focus safely
+        const firstFocusable = screen.querySelector('button, input, select, [tabindex="0"]');
+        if(firstFocusable) setTimeout(() => firstFocusable.focus(), 100);
+    }
+
+    function selectMode(mode) {
+        selectedGameMode = mode;
+        document.querySelectorAll('.game-card').forEach(c => c.classList.remove('selected'));
+        const card = document.querySelector(`.game-card[data-mode="${mode}"]`);
+        card.classList.add('selected');
+        document.getElementById('wordleOptions').style.display = (mode === 'wordle' || mode === 'surprise') ? 'block' : 'none';
+        
+        // Character reaction
+        svgChar.classList.add('char-react');
+        document.body.classList.add('state-demo'); // startle face
+        setTimeout(() => {
+            svgChar.classList.remove('char-react');
+            if(document.querySelector('.screen.active').id === 'setup-screen') document.body.classList.replace('state-demo', 'state-setup');
+        }, 400);
+    }
+
+    // Accessible card selection
+    document.querySelectorAll('.game-card').forEach(card => {
+        card.addEventListener('keydown', (e) => {
+            if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectMode(card.dataset.mode); }
+        });
+    });
+
+    // --- Audio ---
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playAlarmBeep() {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    }
+
+    function startAlarmSound() {
+        if (alarmSoundInterval) clearInterval(alarmSoundInterval);
+        playAlarmBeep();
+        alarmSoundInterval = setInterval(playAlarmBeep, 400);
+    }
+
+    function stopAlarmSound() {
+        if (alarmSoundInterval) clearInterval(alarmSoundInterval);
+        alarmSoundInterval = null;
+    }
+
+    // --- Core Alarm Logic ---
+    function setAlarm() {
+        initAudio();
+        const timeInput = document.getElementById('alarmTime').value;
+        const msgEl = document.getElementById('setup-msg');
+        if (!timeInput) {
+            msgEl.innerText = "Please select a time!";
+            msgEl.style.color = "var(--coral)";
+            return;
+        }
+        msgEl.innerText = "";
+        
+        const [h, m] = timeInput.split(':').map(Number);
+        targetDate = new Date();
+        targetDate.setHours(h, m, 0, 0);
+        
+        // If past, schedule for tomorrow
+        if (targetDate <= new Date()) {
+            targetDate.setDate(targetDate.getDate() + 1);
+        }
+
+        startWaitLoop();
+    }
+
+   function startWaitLoop() {
+    // Save the scheduled time before resetSession clears it.
+    const scheduledDate = targetDate;
+    resetSession();
+    targetDate = scheduledDate;
+
+    const session = getSession();
+
+    document.getElementById('wait-target-text').innerText =
+        `Scheduled for ${targetDate.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        })} ${
+            targetDate.toDateString() !== new Date().toDateString()
+                ? '(Tomorrow)'
+                : '(Today)'
+        }`;
+
+    const mapName = {
+        wordle: "Wordle",
+        math: "Math",
+        memory: "Memory",
+        surprise: "Surprise Me"
+    };
+
+    document.getElementById('wait-challenge-name').innerText =
+        mapName[selectedGameMode];
+
+    setScreen('waiting-screen');
+
+    const loop = () => {
+        if (session !== sessionId) return;
+
+        const diff = targetDate.getTime() - Date.now();
+
+        if (diff <= 0) {
+            triggerAlarm(session);
+            return;
+        }
+
+        const totalSeconds = Math.ceil(diff / 1000);
+        const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+        const secs = String(totalSeconds % 60).padStart(2, '0');
+
+        document.getElementById('wait-countdown').innerText =
+            `${hrs}:${mins}:${secs}`;
+
+        alarmCheckInterval = setTimeout(loop, 200);
+    };
+
+    loop();
+}
+    function cancelAlarm() {
+        resetSession();
+        setScreen('setup-screen');
+    }
+
+    // --- Demo Mode ---
+    function startDemo() {
+        initAudio();
+        resetSession();
+        const session = getSession();
+        isDemo = true;
+        setScreen('demo-screen');
+        
+        let count = 5;
+        const countEl = document.getElementById('demo-countdown');
+        countEl.innerText = count;
+        
+        const tick = () => {
+            if (session !== sessionId) return;
+            count--;
+            countEl.innerText = count;
+            if (count > 0) {
+                alarmCheckInterval = setTimeout(tick, 1000);
+            } else {
+                triggerAlarm(session);
+            }
+        };
+        alarmCheckInterval = setTimeout(tick, 1000);
+    }
+    
+    function cancelDemo() {
+        cancelAlarm();
+    }
+
+    // --- Trigger & Games ---
+    function triggerAlarm(session) {
+        if (session !== sessionId) return;
+        isRinging = true;
+        startTime = new Date();
+        startAlarmSound();
+        setScreen('alarm-ui');
+
+        // Handle Surprise Mode
+        activeGameMode = selectedGameMode;
+        if (activeGameMode === 'surprise') {
+            const games = ['wordle', 'math', 'memory'];
+            activeGameMode = games[Math.floor(Math.random() * games.length)];
+            document.getElementById('alarm-title').innerText = "SURPRISE! " + activeGameMode.toUpperCase();
+        } else {
+            document.getElementById('alarm-title').innerText = "WAKE UP!";
+        }
+
+        document.getElementById('wordle-container').style.display = 'none';
+        document.getElementById('math-container').style.display = 'none';
+        document.getElementById('memory-container').style.display = 'none';
+
+        if (activeGameMode === 'wordle') {
+            document.getElementById('wordle-container').style.display = 'flex';
+            initWordle();
+        } else if (activeGameMode === 'math') {
+            document.getElementById('math-container').style.display = 'flex';
+            initMath();
+        } else if (activeGameMode === 'memory') {
+            document.getElementById('memory-container').style.display = 'flex';
+            initMemory();
+        }
+    }
+
+    function snooze() {
+        targetDate = new Date(Date.now() + 60000); // 1 min from now
+        startWaitLoop();
+    }
+
+    function skipChallenge() {
+        penaltySeconds += 20;
+        winGame(true);
+    }
+
+    function winGame(skipped = false) {
+        if(!isRinging) return; // Prevent duplicate wins
+        const rawTime = Math.round((new Date() - startTime) / 1000);
+        resetSession(); // stops audio, locks inputs
+        setScreen('stats-screen');
+        
+        document.getElementById('disarmMsg').innerText = skipped ? "Challenge Skipped" : "Challenge Cleared!";
+        document.getElementById('disarmMsg').style.color = skipped ? "var(--coral)" : "var(--mint)";
+        document.getElementById('timeTaken').innerText = rawTime;
+        document.getElementById('penaltyDisplay').innerText = penaltySeconds;
+        document.getElementById('totalTimeDisplay').innerText = rawTime + penaltySeconds;
+        document.getElementById('skip-note').style.display = skipped ? "block" : "none";
+
+        document.body.className = '';
+        if (skipped) {
+            document.body.classList.add('state-won-skip');
+        } else {
+            document.body.classList.add('state-won');
+            shootConfetti();
+        }
+    }
+
+    function resetToSetup() {
+        resetSession();
+        setScreen('setup-screen');
+    }
+
+    // --- Animations & Helpers ---
+    function shootConfetti() {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const container = document.getElementById('confetti-container');
+        container.innerHTML = '';
+        const colors = ['#FF4D6D', '#00FF9D', '#FFD166', '#9D4EDD'];
+        for(let i=0; i<60; i++) {
+            let p = document.createElement('div');
+            p.className = 'confetti';
+            p.style.left = Math.random() * 100 + 'vw';
+            p.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            p.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+            p.style.animationDelay = (Math.random() * 0.5) + 's';
+            container.appendChild(p);
+        }
+        setTimeout(() => container.innerHTML = '', 4000);
+    }
+
+    function triggerShake(element) {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        element.classList.remove('anim-shake');
+        void element.offsetWidth; 
+        element.classList.add('anim-shake');
+    }
+
+    // --- WORDLE GAME ---
+    const wordThemes = {
+        morning: ["ARISE", "SHINE", "FRESH", "SMILE", "AWAKE"],
+        coffee:  ["BEANS", "ROAST", "TOAST", "LATTE", "DECAF"],
+        mixed:   ["ARISE", "SHINE", "BEANS", "FOCUS", "POWER", "CLOCK"]
+    };
+    let maxGuesses = 6;
+    let currentGuess = "";
+    let guesses = [];
+    let targetWord = "";
+    let keyStatusMap = {};
+    let isWordleRevealing = false;
+    let isWordleWon = false;
+
+    function initWordle() {
+        const theme = document.getElementById('wordTheme').value;
+        const bank = wordThemes[theme] || wordThemes.mixed;
+        targetWord = bank[Math.floor(Math.random() * bank.length)];
+        guesses = [];
+        currentGuess = "";
+        keyStatusMap = {};
+        isWordleRevealing = false;
+        isWordleWon = false;
+        document.getElementById('wordle-msg').innerText = "Enter five letters";
+        document.getElementById('wordle-msg').style.color = "var(--yellow)";
+        document.getElementById('wordle-retry-box').style.display = 'none';
+        renderWordleGrid();
+        renderWordleKeyboard();
+    }
+
+    function renderWordleGrid() {
+        const grid = document.getElementById('grid');
+        grid.innerHTML = '';
+        for (let i = 0; i < maxGuesses; i++) {
+            let row = document.createElement('div');
+            row.className = 'row';
+            for (let j = 0; j < 5; j++) {
+                let tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.id = `w-tile-${i}-${j}`;
+                
+                if (i < guesses.length) {
+                    // Past guesses (already animated)
+                    tile.innerText = guesses[i][j];
+                    const res = calculateWordleResult(guesses[i], targetWord)[j];
+                    tile.classList.add(res);
+                } else if (i === guesses.length && j < currentGuess.length) {
+                    // Current input
+                    tile.innerText = currentGuess[j];
+                    tile.style.borderColor = "var(--white)";
+                }
+                row.appendChild(tile);
+            }
+            grid.appendChild(row);
+        }
+    }
+
+    function renderWordleKeyboard() {
+        document.querySelectorAll('.key').forEach(btn => {
+            const letter = btn.getAttribute('data-key');
+            // Remove old listeners safely
+            btn.onclick = () => handleWordleInput(letter);
+            btn.className = `key ${btn.innerText.length > 1 ? 'wide' : ''}`;
+            if (keyStatusMap[letter]) btn.classList.add(keyStatusMap[letter]);
+        });
+    }
+
+    function calculateWordleResult(guess, target) {
+        let targetArr = target.split('');
+        let guessArr = guess.split('');
+        let result = Array(5).fill('absent');
+        let letterCounts = {};
+        for(let c of targetArr) letterCounts[c] = (letterCounts[c] || 0) + 1;
+
+        // Pass 1: Correct
+        for(let i=0; i<5; i++) {
+            if(guessArr[i] === targetArr[i]) {
+                result[i] = 'correct';
+                letterCounts[guessArr[i]]--;
+            }
+        }
+        // Pass 2: Present
+        for(let i=0; i<5; i++) {
+            if(result[i] !== 'correct' && letterCounts[guessArr[i]] > 0) {
+                result[i] = 'present';
+                letterCounts[guessArr[i]]--;
+            }
+        }
+        return result;
+    }
+
+    function handleWordleInput(key) {
+        if (!isRinging || activeGameMode !== 'wordle' || isWordleRevealing || isWordleWon || document.getElementById('wordle-retry-box').style.display === 'block') return;
+        
+        const msgEl = document.getElementById('wordle-msg');
+        msgEl.innerText = "Enter five letters";
+        msgEl.style.color = "var(--yellow)";
+
+        if (key === 'BACKSPACE') {
+            currentGuess = currentGuess.slice(0, -1);
+            renderWordleGrid();
+        } else if (key === 'ENTER') {
+            if (currentGuess.length !== 5) {
+                msgEl.innerText = "Not enough letters";
+                msgEl.style.color = "var(--coral)";
+                triggerShake(document.getElementById('wordle-container'));
+                return;
+            }
+            submitWordleGuess();
+        } else if (/^[A-Z]$/.test(key) && currentGuess.length < 5) {
+            currentGuess += key;
+            renderWordleGrid();
+        }
+    }
+
+    function submitWordleGuess() {
+        isWordleRevealing = true;
+        const guess = currentGuess;
+        const rowIdx = guesses.length;
+        guesses.push(guess);
+        const results = calculateWordleResult(guess, targetWord);
+        const session = sessionId;
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        // Reveal animation
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                if (session !== sessionId) return;
+                const tile = document.getElementById(`w-tile-${rowIdx}-${i}`);
+                if (!prefersReducedMotion) {
+                    tile.classList.add('flip-in');
+                    setTimeout(() => {
+                        tile.classList.remove('flip-in');
+                        tile.classList.add(results[i]);
+                    }, 150);
+                } else {
+                    tile.classList.add(results[i]);
+                }
+                
+                // Update keyboard map carefully (don't downgrade)
+                const letter = guess[i];
+                if (results[i] === 'correct') keyStatusMap[letter] = 'correct';
+                else if (results[i] === 'present' && keyStatusMap[letter] !== 'correct') keyStatusMap[letter] = 'present';
+                else if (results[i] === 'absent' && !keyStatusMap[letter]) keyStatusMap[letter] = 'absent';
+                
+            }, prefersReducedMotion ? 0 : i * 250);
+        }
+
+        const totalWait = prefersReducedMotion ? 50 : 5 * 250 + 200;
+        setTimeout(() => {
+            if (session !== sessionId) return;
+            renderWordleKeyboard();
+            if (guess === targetWord) {
+                isWordleWon = true;
+                document.getElementById('wordle-msg').innerText = "Correct!";
+                document.getElementById('wordle-msg').style.color = "var(--mint)";
+                setTimeout(() => winGame(), 600);
+            } else if (guesses.length >= maxGuesses) {
+                document.getElementById('wordle-msg').innerText = `Out of guesses. Word: ${targetWord}`;
+                document.getElementById('wordle-msg').style.color = "var(--coral)";
+                document.getElementById('wordle-retry-box').style.display = 'block';
+                document.querySelector('#wordle-retry-box button').focus();
+            } else {
+                currentGuess = "";
+                isWordleRevealing = false;
+            }
+        }, totalWait);
+    }
+    
+    function retryWordle() {
+        if(!isRinging) return;
+        initWordle();
+    }
+
+    // --- MATH GAME ---
+    let currentMathAnswer = 0;
+    let mathRound = 1;
+    let isMathProcessing = false;
+
+    function initMath() {
+        mathRound = 1;
+        isMathProcessing = false;
+        updateMathDots();
+        nextMathProblem();
+    }
+
+    function updateMathDots() {
+        const dots = document.querySelectorAll('#math-dots .dot');
+        dots.forEach((dot, idx) => {
+            if (idx < mathRound - 1) dot.className = 'dot filled-math';
+            else dot.className = 'dot';
+        });
+        document.getElementById('mathRoundDisplay').innerText = Math.min(mathRound, 5);
+    }
+
+    function nextMathProblem() {
+        const n1 = Math.floor(Math.random() * 20) + 5;
+        const n2 = Math.floor(Math.random() * 20) + 5;
+        const op = Math.random() > 0.5 ? '+' : '-';
+        if (op === '+') {
+            currentMathAnswer = n1 + n2;
+            document.getElementById('mathProblem').innerText = `${n1} + ${n2} = ?`;
+        } else {
+            const max = Math.max(n1, n2);
+            const min = Math.min(n1, n2);
+            currentMathAnswer = max - min;
+            document.getElementById('mathProblem').innerText = `${max} - ${min} = ?`;
+        }
+        const input = document.getElementById('mathAnswer');
+        input.value = '';
+        document.getElementById('math-msg').innerText = "";
+        isMathProcessing = false;
+        setTimeout(() => input.focus(), 100);
+    }
+
+    function submitMathAnswer() {
+        if (!isRinging || activeGameMode !== 'math' || isMathProcessing) return;
+        const input = document.getElementById('mathAnswer');
+        const rawVal = input.value.trim();
+        const msgEl = document.getElementById('math-msg');
+        
+        // Strict integer validation
+        if (!/^-?\d+$/.test(rawVal)) {
+            msgEl.innerText = "Enter a valid integer";
+            msgEl.style.color = "var(--coral)";
+            triggerShake(document.getElementById('math-container'));
+            return;
+        }
+        
+        const ans = parseInt(rawVal, 10);
+        isMathProcessing = true;
+        
+        if (ans === currentMathAnswer) {
+            msgEl.innerText = "Correct!";
+            msgEl.style.color = "var(--mint)";
+            mathRound++;
+            updateMathDots();
+            
+            if (mathRound > 5) {
+                setTimeout(() => winGame(), 500);
+            } else {
+                setTimeout(() => nextMathProblem(), 600);
+            }
+        } else {
+            msgEl.innerText = "Incorrect, try again.";
+            msgEl.style.color = "var(--coral)";
+            triggerShake(document.getElementById('math-container'));
+            setTimeout(() => {
+                input.value = '';
+                isMathProcessing = false;
+                input.focus();
+            }, 600);
+        }
+    }
+
+    // --- MEMORY GAME ---
+    let memSequence = [];
+    let memPlayerStep = 0;
+    let memRound = 1; // 1, 2, 3
+    let memState = 'locked'; // locked, watch, play
+
+    function initMemory() {
+        memRound = 1;
+        memSequence = [];
+        for (let i = 0; i < 3; i++) memSequence.push(Math.floor(Math.random() * 4)); // init length 3
+        startMemoryRound();
+    }
+
+    function startMemoryRound() {
+        memPlayerStep = 0;
+        memState = 'locked';
+        document.getElementById('memRoundDisplay').innerText = memRound;
+        updateMemoryDots();
+        setTimeout(() => playMemorySequence(getSession()), 1000);
+    }
+
+    function updateMemoryDots() {
+        const container = document.getElementById('mem-dots');
+        container.innerHTML = '';
+        for(let i=0; i<memSequence.length; i++) {
+            let dot = document.createElement('div');
+            dot.className = i < memPlayerStep ? 'dot filled-mem' : 'dot';
+            container.appendChild(dot);
+        }
+    }
+
+    async function playMemorySequence(session) {
+        if (session !== sessionId || !isRinging || activeGameMode !== 'memory') return;
+        memState = 'watch';
+        const statusEl = document.getElementById('memory-status');
+        statusEl.innerText = "Watch the pattern...";
+        statusEl.style.color = "var(--yellow)";
+        
+        document.querySelectorAll('.mem-btn').forEach(b => b.disabled = true);
+        
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+        await delay(400);
+
+        for (let i = 0; i < memSequence.length; i++) {
+            if (session !== sessionId) return;
+            const btnIdx = memSequence[i];
+            const btn = document.querySelector(`.mem-btn[data-idx="${btnIdx}"]`);
+            
+            btn.classList.add('active-flash');
+            await delay(450); 
+            btn.classList.remove('active-flash');
+            await delay(250); 
+        }
+        
+        if (session !== sessionId) return;
+        memState = 'play';
+        document.querySelectorAll('.mem-btn').forEach(b => b.disabled = false);
+        statusEl.innerText = "Your turn!";
+        statusEl.style.color = "var(--mint)";
+    }
+
+    function handleMemoryClick(idx) {
+        if (!isRinging || activeGameMode !== 'memory' || memState !== 'play') return;
+        
+        if (idx === memSequence[memPlayerStep]) {
+            // Correct step
+            memPlayerStep++;
+            updateMemoryDots();
+            if (memPlayerStep === memSequence.length) {
+                // Round complete
+                memState = 'locked';
+                document.querySelectorAll('.mem-btn').forEach(b => b.disabled = true);
+                
+                if (memRound >= 3) {
+                    document.getElementById('memory-status').innerText = "Sequence Complete!";
+                    setTimeout(() => winGame(), 500);
+                } else {
+                    document.getElementById('memory-status').innerText = "Great! Next round...";
+                    memRound++;
+                    // Append 1 new symbol
+                    memSequence.push(Math.floor(Math.random() * 4));
+                    setTimeout(startMemoryRound, 1000);
+                }
+            }
+        } else {
+            // Incorrect
+            memState = 'locked';
+            document.querySelectorAll('.mem-btn').forEach(b => b.disabled = true);
+            triggerShake(document.getElementById('memory-container'));
+            document.getElementById('memory-status').innerText = "Oops! Watch again.";
+            document.getElementById('memory-status').style.color = "var(--coral)";
+            memPlayerStep = 0; 
+            updateMemoryDots();
+            setTimeout(() => playMemorySequence(getSession()), 1200);
+        }
+    }
+
+    // --- Global Keyboard Listeners ---
+    document.addEventListener('keydown', (e) => {
+        if (!isRinging) return;
+        
+        if (activeGameMode === 'wordle') {
+            const key = e.key.toUpperCase();
+            if (key === 'ENTER' || key === 'BACKSPACE' || /^[A-Z]$/.test(key)) handleWordleInput(key);
+        } else if (activeGameMode === 'math' && e.key === 'Enter') {
+            submitMathAnswer();
+        } else if (activeGameMode === 'memory' && memState === 'play') {
+            if (['1','2','3','4'].includes(e.key)) {
+                handleMemoryClick(parseInt(e.key) - 1);
+            }
+        }
+    });
+
+    // Run Init
+    window.onload = init;
+</script>
+</body>
+</html>
